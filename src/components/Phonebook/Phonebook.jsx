@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 import { nanoid } from 'nanoid';
 
 import ContactList from './ContactList/ContactList.jsx';
@@ -11,62 +11,52 @@ import {
   TitleContact,
   Title,
 } from './Phonebook.styled.js';
-export class Phonebook extends Component {
-  state = {
-    contacts: [],
-    filter: '',
+
+export const Phonebook = () => {
+  const [contacts, setContacts] = useState(() => {
+    const contacts = JSON.parse(localStorage.getItem('contact'));
+    return contacts ? contacts : [];
+  });
+  const [filter, setFilter] = useState('');
+
+  useEffect(() => {
+    localStorage.setItem('contact', JSON.stringify(contacts));
+  }, [contacts]);
+
+  const isDublicate = name => {
+    const normalizedContact = name.toLowerCase();
+    const result = contacts.find(({ name }) => {
+      return name.toLowerCase() === normalizedContact;
+    });
+    return Boolean(result);
   };
 
-  componentDidMount() {
-    const contacts = JSON.parse(localStorage.getItem('contact'));
-    if (contacts && contacts.length) {
-      this.setState({ contacts });
-    }
-  }
-
-  componentDidUpdate(prevState) {
-    const { contacts } = this.state;
-    if (prevState.contacts.length !== contacts.length) {
-      localStorage.setItem('contact', JSON.stringify(contacts));
-    }
-  }
-
-  addContact = ({ name, number }) => {
-    if (this.isDublicate(name)) {
+  const addContact = ({ name, number }) => {
+    if (isDublicate(name)) {
       return alert(`${name} is already in contacts.`);
     }
 
-    this.setState(prevState => {
-      const { contacts } = prevState;
-
+    setContacts(prevContacts => {
       const newContact = {
         id: nanoid(),
         name,
         number,
       };
 
-      return { contacts: [newContact, ...contacts] };
+      return [newContact, ...prevContacts];
     });
+    return true;
   };
 
-  removeContact = id => {
-    this.setState(({ contacts }) => {
-      const newContacts = contacts.filter(contact => contact.id !== id);
-      return { contacts: newContacts };
-    });
+  const removeContact = id => {
+    setContacts(prevContacts =>
+      prevContacts.filter(contact => contact.id !== id)
+    );
   };
 
-  isDublicate(name) {
-    const normalizedContact = name.toLowerCase();
-    const { contacts } = this.state;
-    const result = contacts.find(({ name }) => {
-      return name.toLowerCase() === normalizedContact;
-    });
-    return Boolean(result);
-  }
+  const handleFilter = ({ target }) => setFilter(target.value);
 
-  getFilteredContacts() {
-    const { filter, contacts } = this.state;
+  const getFilteredContacts = () => {
     if (!filter) {
       return contacts;
     }
@@ -77,34 +67,27 @@ export class Phonebook extends Component {
     });
 
     return result;
-  }
-
-  handleFilter = e => {
-    this.setState({ filter: e.target.value });
   };
 
-  render() {
-    const { addContact, removeContact } = this;
-    const items = this.getFilteredContacts();
-    const isEmpty = Boolean(items.length);
+  const items = getFilteredContacts();
+  const isEmpty = Boolean(items.length);
 
-    return (
-      <>
-        <Wrapper>
-          <Block>
-            <Title>Phonebook</Title>
-            <ContactForm onSubmit={addContact} />
-          </Block>
-          <Block>
-            <TitleContact>Contacts</TitleContact>
-            <Filter inputValue={this.handleFilter} />
-            {isEmpty && (
-              <ContactList removeContact={removeContact} items={items} />
-            )}
-            {!isEmpty && <NoContacts>No contacts in phonebooks</NoContacts>}
-          </Block>
-        </Wrapper>
-      </>
-    );
-  }
-}
+  return (
+    <>
+      <Wrapper>
+        <Block>
+          <Title>Phonebook</Title>
+          <ContactForm onSubmit={addContact} />
+        </Block>
+        <Block>
+          <TitleContact>Contacts</TitleContact>
+          <Filter inputValue={handleFilter} />
+          {isEmpty && (
+            <ContactList removeContact={removeContact} items={items} />
+          )}
+          {!isEmpty && <NoContacts>No contacts in phonebooks</NoContacts>}
+        </Block>
+      </Wrapper>
+    </>
+  );
+};
